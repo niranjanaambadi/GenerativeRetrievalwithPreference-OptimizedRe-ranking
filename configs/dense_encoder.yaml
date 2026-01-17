@@ -1,0 +1,43 @@
+# Dense Encoder Training Configuration
+# Model: MiniLM for efficient bi-encoding
+
+model:
+  name: sentence-transformers/all-MiniLM-L6-v2
+  max_seq_length: 512
+  pooling: mean
+
+data:
+  train_dataset: msmarco
+  train_path: data/msmarco/train.jsonl
+  eval_path: data/msmarco/dev.jsonl
+  num_negatives: 7  # Hard negatives per positive
+
+training:
+  output_dir: checkpoints/dense-encoder
+  batch_size: 64
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  epochs: 3
+  warmup_ratio: 0.1
+  fp16: true
+  
+  # Contrastive loss
+  loss: MultipleNegativesRankingLoss
+  temperature: 0.05
+
+evaluation:
+  eval_steps: 500
+  metric_for_best_model: mrr@10
+  greater_is_better: true
+
+distributed:
+  backend: nccl
+  world_size: 4
+  find_unused_parameters: false
+
+logging:
+  log_steps: 100
+  save_steps: 500
+  save_total_limit: 3
+  report_to: wandb
+  run_name: dense-encoder-msmarco

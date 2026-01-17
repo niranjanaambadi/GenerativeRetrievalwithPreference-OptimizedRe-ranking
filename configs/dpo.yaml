@@ -1,0 +1,87 @@
+# DPO Training Configuration
+# Model: Mistral-7B with preference optimization for re-ranking
+
+model:
+  name: mistralai/Mistral-7B-v0.3
+  torch_dtype: bfloat16
+  load_in_4bit: true
+  bnb_4bit_compute_dtype: bfloat16
+  bnb_4bit_quant_type: nf4
+  use_flash_attention_2: true
+
+# LoRA configuration for efficient fine-tuning
+lora:
+  r: 64
+  lora_alpha: 128
+  lora_dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  bias: none
+  task_type: CAUSAL_LM
+
+# DPO specific settings
+dpo:
+  beta: 0.1  # KL penalty coefficient
+  loss_type: sigmoid  # sigmoid or hinge
+  label_smoothing: 0.0
+  reference_free: false
+
+data:
+  train_path: data/preferences/train.jsonl
+  eval_path: data/preferences/eval.jsonl
+  max_length: 2048
+  max_prompt_length: 1024
+
+training:
+  output_dir: checkpoints/dpo-mistral-7b
+  batch_size: 4
+  gradient_accumulation_steps: 8  # Effective batch = 32
+  learning_rate: 5.0e-7
+  weight_decay: 0.0
+  max_steps: 1000
+  warmup_steps: 100
+  
+  # Optimization
+  optim: paged_adamw_32bit
+  lr_scheduler_type: cosine
+  max_grad_norm: 0.3
+  
+  # Precision
+  bf16: true
+  tf32: true
+
+evaluation:
+  eval_steps: 100
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+
+distributed:
+  backend: nccl
+  world_size: 4
+  gradient_checkpointing: true
+  ddp_find_unused_parameters: false
+
+logging:
+  log_steps: 10
+  save_steps: 200
+  save_total_limit: 3
+  report_to: wandb
+  run_name: dpo-mistral-rerank
+
+# Prompt template for ranking
+prompt_template: |
+  You are a search relevance expert. Given a query and two documents, determine which document is more relevant to the query.
+  
+  Query: {query}
+  
+  Document A: {doc_a}
+  
+  Document B: {doc_b}
+  
+  Which document is more relevant to the query? Answer with only 'A' or 'B'.

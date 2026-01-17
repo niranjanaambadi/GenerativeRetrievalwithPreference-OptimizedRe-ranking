@@ -1,0 +1,55 @@
+# Evaluation Configuration
+
+datasets:
+  - name: trec-covid
+    path: BeIR/trec-covid
+    split: test
+  - name: nq
+    path: BeIR/nq
+    split: test
+  - name: msmarco
+    path: BeIR/msmarco
+    split: dev
+
+models:
+  dense_encoder: checkpoints/dense-encoder
+  reranker_base: mistralai/Mistral-7B-v0.3
+  reranker_dpo: checkpoints/dpo-mistral-7b
+
+retrieval:
+  bm25_top_k: 100
+  dense_top_k: 20
+  rerank_top_k: 10
+
+metrics:
+  - ndcg@1
+  - ndcg@5
+  - ndcg@10
+  - mrr@10
+  - recall@10
+  - recall@100
+
+evaluation:
+  batch_size: 8
+  max_docs_per_query: 100
+  
+inference:
+  load_in_4bit: true
+  max_new_tokens: 10
+  temperature: 0.0
+  do_sample: false
+
+output:
+  results_dir: results/
+  save_predictions: true
+  save_rankings: true
+
+ablations:
+  - name: bm25_only
+    stages: [bm25]
+  - name: bm25_dense
+    stages: [bm25, dense]
+  - name: bm25_dense_llm
+    stages: [bm25, dense, rerank_base]
+  - name: bm25_dense_dpo
+    stages: [bm25, dense, rerank_dpo]
